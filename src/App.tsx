@@ -253,6 +253,7 @@ function App() {
       }
     } else alert('get PoolPair contract failed')
   }
+  // check lai
   const getEstimateSwapToken = async () => {
     // tokenOutAmount = _reserve1.mul(amount).div(_reserve0.add(amount));
     if (reserveRdx <= 0 || reserveWjk <= 0 || leftSwapValue <= 0) {
@@ -267,7 +268,7 @@ function App() {
     }
     setRightSwapValue(tokenOutAmount)
   }
-
+  // check lai
   const [leftSwapValue, setLeftSwapValue] = useState<any>(0)
   const [rightSwapValue, setRightSwapValue] = useState<any>(0)
   const [leftEqualRDX, setLeftEqualRDX] = useState<Boolean>(true)
@@ -339,10 +340,7 @@ function App() {
 
   useEffect(() => {
     if (userAccount) {
-      getRDXBal()
-      getWJKBal()
-      getRDLPBal()
-      getReserves()
+      update()
     }
   }, [userAccount])
   useEffect(() => {
