@@ -342,7 +342,7 @@ function App() {
     if (userAccount) {
       update()
     }
-  }, [userAccount])
+  }, [userAccount, update])
   useEffect(() => {
     if (account) {
       setUserAccount(account)
@@ -355,7 +355,7 @@ function App() {
     if (window.localStorage.getItem('userAccount')) {
       connectWallet()
     }
-  }, [])
+  }, [connectWallet])
 
   return (
     <div style={{ padding: 20, flexDirection: 'row', display: 'flex' }}>
