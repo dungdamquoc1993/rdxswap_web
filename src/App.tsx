@@ -354,6 +354,10 @@ function App() {
   return (
     <div style={{ padding: 20, flexDirection: 'row', display: 'flex' }}>
       <div style={{ minHeight: 200, padding: 50, flex: 1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        {!userAccount && <button onClick={connectWallet}>
+          <p>Connect Wallet</p>
+        </button>}
+        <p>Account: {userAccount}</p>
         <div style={{ display: 'flex', flexDirection: 'column' }} >
           <h1 style={{ color: 'blue', marginRight: 25 }} >Swap</h1>
           <div style={{ display: 'flex', flexDirection: 'row' }}>
