@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { useWeb3React } from '@web3-react/core'
 import { Injected } from './connectors'
@@ -8,6 +8,8 @@ const { parseUnits } = require("ethers/lib/utils");
 
 
 function App() {
+  const [leftSwapValue, setLeftSwapValue] = useState<any>(0)
+  const [leftEqualRDX, setLeftEqualRDX] = useState<Boolean>(true)
   const addLiquidityInput = ['rdxExpect', 'wjkExpect', 'rdxMin', 'wjkMin']
   const listInputAddLiquidity = addLiquidityInput.map((name, index) => {
     let labelName = name === 'rdxExpect' ? 'RDX expect' : name === 'wjkExpect' ? 'WJK expect' :
@@ -65,6 +67,8 @@ function App() {
     await getRDLPBal()
     await getReserves()
   }
+
+
   const mintRDX = async () => {
     const contract = await getContract('RDX')
     if (contract != null) {
@@ -101,7 +105,7 @@ function App() {
         const bal = parseInt((await contract.balanceOf(userAccount))) / 10 ** 12
         setUserRDXBal(bal)
       } catch (error) {
-        alert('get RDX balance cause crash by system')
+        console.log('get RDX balance cause crash by system')
       }
     } else alert('get RDX contract failed')
   }
@@ -112,7 +116,7 @@ function App() {
         const bal = parseInt((await contract.balanceOf(userAccount))) / 10 ** 12
         setUserWJKBal(bal)
       } catch (error) {
-        alert('get WJK balance cause crash by system')
+        console.log('get WJK balance cause crash by system')
       }
     } else alert('get WJK contract failed')
   }
@@ -123,7 +127,7 @@ function App() {
         const bal = parseInt((await contract.balanceOf(userAccount))) / 10 ** 12
         setRDLPBal(bal)
       } catch (error) {
-        alert('get RDLP Balance cause crash by system')
+        console.log('get RDLP Balance cause crash by system')
       }
     } else alert('get PoolPair contract failed')
   }
@@ -155,11 +159,14 @@ function App() {
   const getReserves = async () => {
     const contract = await getContract('POO')
     if (contract != null) {
-      const rdxReserve = parseInt((await contract.getReserves())[0]) / 10 ** 12
-      const wjkReserve = parseInt((await contract.getReserves())[1]) / 10 ** 12
-      setReserveRdx(rdxReserve)
-      setReserveWjk(wjkReserve)
-
+      try {
+        const rdxReserve = parseInt((await contract.getReserves())[0]) / 10 ** 12
+        const wjkReserve = parseInt((await contract.getReserves())[1]) / 10 ** 12
+        setReserveRdx(rdxReserve)
+        setReserveWjk(wjkReserve)
+      } catch (error) {
+        console.log('get reserves cause cash by system')
+      }
     } else alert('get Poolpair contract failed')
   }
 
@@ -253,57 +260,50 @@ function App() {
       }
     } else alert('get PoolPair contract failed')
   }
-  // check lai
-  const getEstimateSwapToken = async () => {
-    // tokenOutAmount = _reserve1.mul(amount).div(_reserve0.add(amount));
+
+  const rightSwapValue = useMemo(() => {
     if (reserveRdx <= 0 || reserveWjk <= 0 || leftSwapValue <= 0) {
-      setRightSwapValue(0)
-      return
+      return 0
     }
     let tokenOutAmount
     if (leftEqualRDX) {
-      tokenOutAmount = reserveWjk * leftSwapValue / reserveRdx + leftSwapValue
+      tokenOutAmount = (reserveWjk * parseInt(leftSwapValue)) / (reserveRdx + parseInt(leftSwapValue))
     } else {
-      tokenOutAmount = reserveRdx * leftSwapValue / reserveWjk + leftSwapValue
+      tokenOutAmount = (reserveRdx * parseInt(leftSwapValue)) / (reserveWjk + parseInt(leftSwapValue))
     }
-    setRightSwapValue(tokenOutAmount)
-  }
-  // check lai
-  const [leftSwapValue, setLeftSwapValue] = useState<any>(0)
-  const [rightSwapValue, setRightSwapValue] = useState<any>(0)
-  const [leftEqualRDX, setLeftEqualRDX] = useState<Boolean>(true)
+    return tokenOutAmount
+  }, [leftEqualRDX, leftSwapValue, reserveRdx, reserveWjk])
+
+
   const swap = async () => {
     const rdxContract = await getContract('RDX')
+    const wjkContract = await getContract('WJK')
     const pooContract = await getContract('POO')
-    if (pooContract != null && rdxContract != null) {
+    if (pooContract != null && rdxContract != null && wjkContract != null) {
       try {
         if (leftEqualRDX) {
+          console.log('rdx')
           let rdxAllowance = await getRDXAllowance()
           if (leftSwapValue <= 0) return alert('please submit an valid amount to swap')
           if (rdxAllowance && rdxAllowance - leftSwapValue >= 0) {
             const swapTX = await pooContract.swap(RedDotToken.contractAddress,
               parseUnits(`${leftSwapValue}`, 12),
               parseUnits('0', 12))
-            alert('swap success')
             await swapTX.wait()
-            getRDXBal()
-            getWJKBal()
-            getRDLPBal()
-            getReserves()
+            alert('swap success')
+            await update()
           } else {
             let tx = await rdxContract.approve(PoolPair.contractAddress, parseUnits(`${leftSwapValue}`, 12))
             await tx.wait()
             const swapTX = await pooContract.swap(RedDotToken.contractAddress,
               parseUnits(`${leftSwapValue}`, 12),
               parseUnits('0', 12))
-            alert('swap success')
             await swapTX.wait()
-            getRDXBal()
-            getWJKBal()
-            getRDLPBal()
-            getReserves()
+            alert('swap success')
+            await update()
           }
         } else {
+          console.log('wjk')
           let wjkAllowance = await getWJKAllowance()
           if (leftSwapValue <= 0) return alert('please submit an valid amount to swap')
           if (wjkAllowance && wjkAllowance - leftSwapValue >= 0) {
@@ -312,22 +312,16 @@ function App() {
               parseUnits('0', 12))
             alert('swap success')
             await swapTX.wait()
-            getRDXBal()
-            getWJKBal()
-            getRDLPBal()
-            getReserves()
+            await update()
           } else {
-            let tx = await rdxContract.approve(PoolPair.contractAddress, parseUnits(`${leftSwapValue}`, 12))
+            let tx = await wjkContract.approve(PoolPair.contractAddress, parseUnits(`${leftSwapValue}`, 12))
             await tx.wait()
             const swapTX = await pooContract.swap(WojakToken.contractAddress,
               parseUnits(`${leftSwapValue}`, 12),
               parseUnits('0', 12))
             alert('swap success')
             await swapTX.wait()
-            getRDXBal()
-            getWJKBal()
-            getRDLPBal()
-            getReserves()
+            await update()
           }
         }
       } catch (error) {
@@ -377,7 +371,7 @@ function App() {
               <p>{leftEqualRDX ? 'RDX' : 'WJK'}</p>
               <input style={{ marginRight: 10, width: 120 }} type='number' onChange={(e) => {
                 setLeftSwapValue(e.target.value)
-                getEstimateSwapToken()
+
               }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -409,7 +403,7 @@ function App() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }} >
           <h1 style={{ color: 'blue', marginRight: 25 }} >Recall Liquidity</h1>
-          <p>You RDLP Token: {userRDLPBal}</p>
+          <p>Your RDLP Token: {userRDLPBal}</p>
           <div style={{ display: 'flex', flexDirection: 'row' }}>
             {listInputRemoveLiquidity}
           </div>
